@@ -74,10 +74,13 @@ public class MARS implements Algorithm {
     @Override
     public void setKey(byte[] key){
         int n = key.length / 4;
+
         int[] T = new int[15];
-        for (int i = 0; i < n; i++) T[i] = leToInt(key, 4*i);
+        for (int i = 0; i < n; i++)
+            T[i] = leToInt(key, 4*i);
         T[n] = n;
-        for (int i = n+1; i < 15; i++) T[i] = 0;
+        for (int i = n+1; i < 15; i++)
+            T[i] = 0;
 
         for (int j = 0; j < 4; j++){
             for (int i = 0; i < 15; i++){
@@ -94,6 +97,7 @@ public class MARS implements Algorithm {
                 K[10*j + i] = T[(4*i) % 15];
             }
         }
+
         for (int i = 5; i <= 35; i += 2){
             int j = K[i] & 3;
             int w = K[i] | 3;
@@ -107,22 +111,35 @@ public class MARS implements Algorithm {
 
     @Override
     public byte[] encryptBlock(byte[] block){
+
         int A = leToInt(block, 0);
         int Bv = leToInt(block, 4);
         int Cv = leToInt(block, 8);
         int D = leToInt(block, 12);
 
-        A += K[0]; Bv += K[1]; Cv += K[2]; D += K[3];
+        A += K[0];
+        Bv += K[1];
+        Cv += K[2];
+        D += K[3];
 
         for (int i = 0; i < 8; i++){
             int a0 = A;
+
             Bv = add32(Bv ^ S0(a0), S1(a0 >>> 8));
             Cv = add32(Cv, S0(a0 >>> 16));
             D  = D ^ S1(a0 >>> 24);
             A = rotr(a0, 24);
-            if (i == 1 || i == 5) A = add32(A, Bv);
-            else if (i == 0 || i == 4) A = add32(A, D);
-            int t = A; A = Bv; Bv = Cv; Cv = D; D = t;
+
+            if (i == 1 || i == 5)
+                A = add32(A, Bv);
+            else if (i == 0 || i == 4)
+                A = add32(A, D);
+
+            int t = A;
+            A = Bv;
+            Bv = Cv;
+            Cv = D;
+            D = t;
         }
 
         for (int i = 0; i < 16; i++){
@@ -130,29 +147,52 @@ public class MARS implements Algorithm {
             int M = rotl(add32(A, K[2*i + 4]), (R >>> 5) & 31);
             int L = rotl(S9(M) ^ (R >>> 5) ^ R, R & 31);
 
-            if (i < 8) { Bv = add32(Bv, L); D = D ^ R; }
-            else       { Bv = Bv ^ R;       D = add32(D, L); }
+            if (i < 8) {
+                Bv = add32(Bv, L);
+                D = D ^ R;
+            }
+            else {
+                Bv = Bv ^ R;
+                D = add32(D, L);
+            }
             Cv = add32(Cv, M);
 
-            int t = rotl(A, 13); A = Bv; Bv = Cv; Cv = D; D = t;
+            int t = rotl(A, 13);
+            A = Bv;
+            Bv = Cv;
+            Cv = D;
+            D = t;
         }
 
         for (int i = 0; i < 8; i++){
-            if (i == 3 || i == 7) A = sub32(A, Bv);
-            else if (i == 2 || i == 6) A = sub32(A, D);
+            if (i == 3 || i == 7)
+                A = sub32(A, Bv);
+            else if (i == 2 || i == 6)
+                A = sub32(A, D);
 
             Bv = Bv ^ S1(A);
             Cv = sub32(Cv, S0(rotl(A, 8)));
             D  = sub32(D, S1(rotl(A, 16)));
             D  = D ^ S0(rotl(A, 24));
 
-            int t = rotl(A, 24); A = Bv; Bv = Cv; Cv = D; D = t;
+            int t = rotl(A, 24);
+            A = Bv;
+            Bv = Cv;
+            Cv = D;
+            D = t;
         }
 
-        A = sub32(A, K[36]); Bv = sub32(Bv, K[37]); Cv = sub32(Cv, K[38]); D = sub32(D, K[39]);
+        A = sub32(A, K[36]);
+        Bv = sub32(Bv, K[37]);
+        Cv = sub32(Cv, K[38]);
+        D = sub32(D, K[39]);
 
         byte[] out = new byte[16];
-        intToLe(A, out, 0); intToLe(Bv, out, 4); intToLe(Cv, out, 8); intToLe(D, out, 12);
+        intToLe(A, out, 0);
+        intToLe(Bv, out, 4);
+        intToLe(Cv, out, 8);
+        intToLe(D, out, 12);
+
         return out;
     }
 
@@ -163,36 +203,60 @@ public class MARS implements Algorithm {
         int Cv = leToInt(block, 8);
         int D = leToInt(block, 12);
 
-        A = add32(A, K[36]); Bv = add32(Bv, K[37]); Cv = add32(Cv, K[38]); D = add32(D, K[39]);
+        A = add32(A, K[36]);
+        Bv = add32(Bv, K[37]);
+        Cv = add32(Cv, K[38]);
+        D = add32(D, K[39]);
 
         for (int i = 7; i >= 0; i--){
-            int t = rotr(D, 24); D = Cv; Cv = Bv; Bv = A; A = t;
+            int t = rotr(D, 24);
+            D = Cv;
+            Cv = Bv;
+            Bv = A;
+            A = t;
 
             D  = add32(D ^ S0(rotl(A, 24)), S1(rotl(A, 16)));
             Cv = add32(Cv, S0(rotl(A, 8)));
             Bv = Bv ^ S1(A);
 
-            if (i == 3 || i == 7) A = add32(A, Bv);
-            else if (i == 2 || i == 6) A = add32(A, D);
+            if (i == 3 || i == 7)
+                A = add32(A, Bv);
+            else if (i == 2 || i == 6)
+                A = add32(A, D);
         }
 
         for (int i = 15; i >= 0; i--){
-            int t = rotr(D, 13); D = Cv; Cv = Bv; Bv = A; A = t;
+            int t = rotr(D, 13);
+            D = Cv;
+            Cv = Bv;
+            Bv = A;
+            A = t;
 
             int R = rotl(mul32(rotl(A, 13), K[2*i + 5]), 10);
             int M = rotl(add32(A, K[2*i + 4]), (R >>> 5) & 31);
             int L = rotl(S9(M) ^ (R >>> 5) ^ R, R & 31);
 
             Cv = sub32(Cv, M);
-            if (i < 8) { Bv = sub32(Bv, L); D = D ^ R; }
-            else       { Bv = Bv ^ R;       D = sub32(D, L); }
+            if (i < 8) {
+                Bv = sub32(Bv, L); D = D ^ R;
+            }
+            else {
+                Bv = Bv ^ R;
+                D = sub32(D, L);
+            }
         }
 
         for (int i = 7; i >= 0; i--){
-            int t = D; D = Cv; Cv = Bv; Bv = A; A = t;
+            int t = D;
+            D = Cv;
+            Cv = Bv;
+            Bv = A;
+            A = t;
 
-            if (i == 1 || i == 5) A = sub32(A, Bv);
-            else if (i == 0 || i == 4) A = sub32(A, D);
+            if (i == 1 || i == 5)
+                A = sub32(A, Bv);
+            else if (i == 0 || i == 4)
+                A = sub32(A, D);
 
             A  = rotl(A, 24);
             D  = D ^ S1(rotr(A, 24));
@@ -201,10 +265,17 @@ public class MARS implements Algorithm {
             Bv = Bv ^ S0(A);
         }
 
-        A = sub32(A, K[0]); Bv = sub32(Bv, K[1]); Cv = sub32(Cv, K[2]); D = sub32(D, K[3]);
+        A = sub32(A, K[0]);
+        Bv = sub32(Bv, K[1]);
+        Cv = sub32(Cv, K[2]);
+        D = sub32(D, K[3]);
 
         byte[] out = new byte[16];
-        intToLe(A, out, 0); intToLe(Bv, out, 4); intToLe(Cv, out, 8); intToLe(D, out, 12);
+        intToLe(A, out, 0);
+        intToLe(Bv, out, 4);
+        intToLe(Cv, out, 8);
+        intToLe(D, out, 12);
+
         return out;
     }
 
@@ -222,7 +293,7 @@ public class MARS implements Algorithm {
                 ((b[off+3] & 0xff) << 24);
     }
     private static void intToLe(int v, byte[] out, int off){
-        out[off]   = (byte)( v        & 0xff);
+        out[off] = (byte)(v & 0xff);
         out[off+1] = (byte)((v >>> 8) & 0xff);
         out[off+2] = (byte)((v >>>16) & 0xff);
         out[off+3] = (byte)((v >>>24) & 0xff);
