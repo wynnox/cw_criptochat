@@ -1,6 +1,7 @@
 package test.java.com.project;
 
 import main.java.com.project.ciphers.MARS;
+import main.java.com.project.factories.*;
 import main.java.com.project.modes.CbcMode;
 import main.java.com.project.padding.Pkcs7Padding;
 import org.junit.jupiter.api.Test;
@@ -56,6 +57,28 @@ public class CryTest {
         for (int i = 16; i < 32; i++)
             assertEquals(16, p[i] & 0xff);
         assertArrayEquals(data, pad.unpad(p));
+    }
+
+    @Test
+    void end_to_end_via_factory() {
+        byte[] key = randomKey();
+
+        CryptoSuite suite = new CryptoFactory.Builder()
+                .algorithm(AlgorithmType.MARS)
+                .mode(ModeType.CBC)
+                .padding(PaddingType.PKCS7)
+                .key(key)
+                .buildSuite();
+
+        for (int len : new int[]{0, 5, 16, 31, 64, 257}) {
+            byte[] iv  = randomBytes(suite.getBlockSize());
+            byte[] msg = randomBytes(len);
+
+            byte[] ct  = suite.encrypt(msg, iv);
+            byte[] dec = suite.decrypt(ct, iv);
+
+            assertArrayEquals(msg, dec, "factory failed (len="+len+")");
+        }
     }
 
     private byte[] randomKey() {
