@@ -6,13 +6,10 @@ public class Pkcs7Padding implements Padding {
 
     @Override
     public byte[] pad(byte[] data, int blockSize) {
-
         int padLen = blockSize - (data.length % blockSize);
         if (padLen == 0) padLen = blockSize;
-
         byte[] out = Arrays.copyOf(data, data.length + padLen);
-        Arrays.fill(out, data.length, out.length, (byte)padLen);
-
+        Arrays.fill(out, data.length, out.length, (byte) padLen);
         return out;
     }
 
