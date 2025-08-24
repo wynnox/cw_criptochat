@@ -1,4 +1,4 @@
-package main.java.com.project.ciphers;
+package com.project.crypto.ciphers;
 
 public class MARS implements Algorithm {
 

@@ -1,6 +1,6 @@
-package main.java.com.project.modes;
+package com.project.crypto.modes;
 
-import main.java.com.project.ciphers.Algorithm;
+import com.project.crypto.ciphers.Algorithm;
 
 import java.util.Arrays;
 

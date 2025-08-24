@@ -1,4 +1,4 @@
-package main.java.com.project.padding;
+package com.project.crypto.padding;
 
 import java.util.Arrays;
 

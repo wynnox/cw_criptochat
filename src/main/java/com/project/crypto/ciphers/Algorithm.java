@@ -1,4 +1,4 @@
-package main.java.com.project.ciphers;
+package com.project.crypto.ciphers;
 
 public interface Algorithm {
     int getBlockSize();

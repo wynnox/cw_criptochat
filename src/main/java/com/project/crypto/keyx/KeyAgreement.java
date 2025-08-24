@@ -1,4 +1,4 @@
-package main.java.com.project.keyx;
+package com.project.crypto.keyx;
 
 public interface KeyAgreement {
     byte[] generatePrivate();

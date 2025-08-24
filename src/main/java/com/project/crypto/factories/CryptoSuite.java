@@ -1,8 +1,8 @@
-package main.java.com.project.factories;
+package com.project.crypto.factories;
 
-import main.java.com.project.ciphers.Algorithm;
-import main.java.com.project.modes.CipherMode;
-import main.java.com.project.padding.Padding;
+import com.project.crypto.ciphers.Algorithm;
+import com.project.crypto.modes.CipherMode;
+import com.project.crypto.padding.Padding;
 
 public final class CryptoSuite {
     private final Algorithm algorithm;

@@ -1,4 +1,5 @@
 LOL.md
+/src/test/
 
 ### IntelliJ IDEA ###
 out/
@@ -23,6 +24,7 @@ bin/
 /dist/
 /nbdist/
 /.nb-gradle/
+/gradle/
 
 ### VS Code ###
 .vscode/

@@ -1,9 +1,11 @@
-package test.java.com.project;
+package com.project;
 
-import main.java.com.project.ciphers.MARS;
-import main.java.com.project.factories.*;
-import main.java.com.project.modes.CbcMode;
-import main.java.com.project.padding.Pkcs7Padding;
+import com.project.crypto.factories.*;
+import com.project.crypto.keyx.DhParams;
+import com.project.crypto.keyx.DiffieHellman;
+import com.project.crypto.modes.CbcMode;
+import com.project.crypto.padding.Pkcs7Padding;
+import com.project.crypto.ciphers.MARS;
 import org.junit.jupiter.api.Test;
 
 import java.security.SecureRandom;
@@ -80,6 +82,26 @@ public class CryTest {
             assertArrayEquals(msg, dec, "factory failed (len="+len+")");
         }
     }
+
+    @Test
+    void diffie_hellman() {
+        DhParams params = DhParams.generate(512, 64, rng);
+        DiffieHellman alice = new DiffieHellman(params);
+        DiffieHellman bob   = new DiffieHellman(params);
+
+        byte[] privA = alice.generatePrivate();
+        byte[] pubA  = alice.derivePublic(privA);
+
+        byte[] privB = bob.generatePrivate();
+        byte[] pubB  = bob.derivePublic(privB);
+
+        byte[] sharedA = alice.deriveShared(privA, pubB);
+        byte[] sharedB = bob.deriveShared(privB, pubA);
+
+        assertArrayEquals(sharedA, sharedB, "DH общий ключ не совпадает");
+    }
+
+
 
     private byte[] randomKey() {
         int nWords = 4 + rng.nextInt(11);

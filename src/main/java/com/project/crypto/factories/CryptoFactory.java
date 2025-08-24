@@ -1,11 +1,11 @@
-package main.java.com.project.factories;
+package com.project.crypto.factories;
 
-import main.java.com.project.ciphers.Algorithm;
-import main.java.com.project.ciphers.MARS;
-import main.java.com.project.modes.CbcMode;
-import main.java.com.project.modes.CipherMode;
-import main.java.com.project.padding.Padding;
-import main.java.com.project.padding.Pkcs7Padding;
+import com.project.crypto.ciphers.Algorithm;
+import com.project.crypto.ciphers.MARS;
+import com.project.crypto.modes.CbcMode;
+import com.project.crypto.modes.CipherMode;
+import com.project.crypto.padding.Padding;
+import com.project.crypto.padding.Pkcs7Padding;
 
 public class CryptoFactory {
     public final AlgorithmType algorithm;

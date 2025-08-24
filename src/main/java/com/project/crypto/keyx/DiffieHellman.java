@@ -1,10 +1,9 @@
-package main.java.com.project.keyx;
+package com.project.crypto.keyx;
 
-import main.java.com.project.util.Bytes;
+import com.project.crypto.util.Bytes;
 
 import java.math.BigInteger;
 import java.security.SecureRandom;
-import java.util.Arrays;
 
 public class DiffieHellman implements KeyAgreement {
     private final DhParams params;

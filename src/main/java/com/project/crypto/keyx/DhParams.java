@@ -1,4 +1,4 @@
-package main.java.com.project.keyx;
+package com.project.crypto.keyx;
 
 import java.math.BigInteger;
 import java.security.SecureRandom;
