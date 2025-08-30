@@ -51,7 +51,7 @@ public class RoomController {
             BigInteger Y = new BigInteger(publicKey);
             boolean ok = roomService.submitPublicKey(roomId, userId, Y);
             return ok ? ResponseEntity.ok("Ключ принят")
-                    : ResponseEntity.badRequest().body("Комната не найдена или закрыта");
+                    : ResponseEntity.badRequest().body("Комната закрыта");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Ошибка формата ключа");
         }

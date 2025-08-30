@@ -1,4 +1,9 @@
+vaadin:
+  launch-browser: true
+  whitelisted-packages: com.project.vaadin
 spring:
+  main:
+    allow-bean-definition-overriding: true
   kafka:
     bootstrap-servers: localhost:9092
     consumer:
@@ -9,3 +14,7 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
+logging:
+  level:
+    org.springframework.web.socket: INFO
+    org.springframework.messaging: INFO

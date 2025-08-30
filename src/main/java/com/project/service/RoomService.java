@@ -15,6 +15,7 @@ public class RoomService {
 
     public Room createRoom(String algorithm, String mode, String padding) {
         String id = UUID.randomUUID().toString();
+        // TODO параметризовать bitLength через application.yml или увеличить
         DhParams params = DhParams.generate(512, 40, new SecureRandom());
         Room room = new Room(id, algorithm, mode, padding, params.p, params.q, params.g);
         rooms.put(id, room);
