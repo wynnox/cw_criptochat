@@ -23,4 +23,19 @@ public class Bytes {
     public static BigInteger fromUnsigned(byte[] be) {
         return new BigInteger(1, be);
     }
+
+    public static byte[] xor(byte[] a, byte[] b) {
+        int len = Math.min(a.length, b.length);
+        byte[] result = new byte[len];
+        for (int i = 0; i < len; i++) {
+            result[i] = (byte) (a[i] ^ b[i]);
+        }
+        return result;
+    }
+
+    public static byte[] random(int length) {
+        byte[] r = new byte[length];
+        new java.security.SecureRandom().nextBytes(r);
+        return r;
+    }
 }

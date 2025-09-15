@@ -9,7 +9,7 @@ public class DhParams {
     public final BigInteger g;
     public final int encodedLen;
 
-    private DhParams(BigInteger p, BigInteger q, BigInteger g) {
+    public DhParams(BigInteger p, BigInteger q, BigInteger g) {
         this.p = p;
         this.q = q;
         this.g = g;

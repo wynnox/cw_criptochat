@@ -1,5 +1,8 @@
 package com.project.crypto.factories;
 
 public enum ModeType {
-    CBC
+    CBC,
+    CFB,
+    ECB,
+    OFB
 }

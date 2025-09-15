@@ -26,7 +26,6 @@ public class SessionRegistry implements VaadinServiceInitListener {
             log.info("New VaadinSession: {}", session.getSession().getId());
         });
 
-        // Когда сессия закрывается
         event.getSource().addSessionDestroyListener(e -> {
             sessions.remove(e.getSession().getSession().getId());
             log.info("Removed VaadinSession: {}", e.getSession().getSession().getId());

@@ -1,5 +1,14 @@
 LOL.md
 /src/test/
+.idea
+gradle
+src/main/frontend
+
+.gradle/
+build/
+gradlew
+gradlew.bat
+target/
 
 ### IntelliJ IDEA ###
 out/

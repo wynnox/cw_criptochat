@@ -2,8 +2,8 @@ package com.project.crypto.factories;
 
 import com.project.crypto.ciphers.Algorithm;
 import com.project.crypto.ciphers.MARS;
-import com.project.crypto.modes.CbcMode;
-import com.project.crypto.modes.CipherMode;
+import com.project.crypto.ciphers.Magenta;
+import com.project.crypto.modes.*;
 import com.project.crypto.padding.Padding;
 import com.project.crypto.padding.Pkcs7Padding;
 
@@ -49,12 +49,16 @@ public class CryptoFactory {
 
             Algorithm alg = switch (algorithm) {
                 case MARS -> new MARS();
+                case MAGENTA -> new Magenta();
             };
 
             alg.setKey(key);
 
             CipherMode cmode = switch (mode) {
                 case CBC -> new CbcMode(alg);
+                case CFB -> new CfbMode(alg);
+                case ECB -> new EcbMode(alg);
+                case OFB -> new OfbMode(alg);
             };
 
             Padding pad = switch (padding) {

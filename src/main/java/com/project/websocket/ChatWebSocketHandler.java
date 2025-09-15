@@ -56,31 +56,31 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             String roomId = extractRoomId(path);
 
             if (roomId != null) {
-                messageHistory.computeIfAbsent(roomId, id -> Collections.synchronizedList(new ArrayList<>()))
+                messageHistory
+                        .computeIfAbsent(roomId, id -> Collections.synchronizedList(new ArrayList<>()))
                         .add(json.toJson());
             }
 
             synchronized (sessions) {
                 for (WebSocketSession ws : sessions) {
-                    if (ws.isOpen()) {
-                        ws.sendMessage(new TextMessage(json.toJson()));
-                        log.info("Отправлено: {} -> {}", session.getId(), ws.getId());
-                    }
+                    if (!ws.isOpen()) continue;
+
+                    if (ws.getId().equals(session.getId())) continue;
+
+                    String otherPath = ws.getUri() != null ? ws.getUri().getPath() : "";
+                    String otherRoom = extractRoomId(otherPath);
+                    if (roomId != null && !roomId.equals(otherRoom)) continue;
+
+                    ws.sendMessage(new TextMessage(json.toJson()));
+                    log.info("Отправлено: {} -> {}", session.getId(), ws.getId());
                 }
             }
 
-            synchronized (sessions) {
-                for (WebSocketSession ws : sessions) {
-                    if (ws.isOpen()) {
-                        ws.sendMessage(new TextMessage(json.toJson()));
-                        log.info("Отправлено: {} -> {}", session.getId(), ws.getId());
-                    }
-                }
-            }
         } catch (Exception e) {
             log.error("Ошибка при обработке сообщения: {}", e.getMessage(), e);
         }
     }
+
 
     private String extractRoomId(String path) {
         if (path != null && path.startsWith("/chat/")) {

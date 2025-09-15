@@ -1,7 +1,6 @@
-package com.project.controller;
+package com.project.service;
 
 import com.project.model.Room;
-import com.project.service.RoomService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
