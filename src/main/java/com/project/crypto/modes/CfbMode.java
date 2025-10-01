@@ -13,20 +13,20 @@ public class CfbMode implements CipherMode {
 
     @Override
     public byte[] encrypt(byte[] data, byte[] iv) {
-
         int bs = cipher.getBlockSize();
 
         byte[] out  = new byte[data.length];
         byte[] prev = Arrays.copyOf(iv, bs);
-        byte[] buf  = new byte[bs];
 
         for (int off = 0; off < data.length; off += bs) {
             byte[] enc = cipher.encryptBlock(prev);
             int rem = Math.min(bs, data.length - off);
-            System.arraycopy(data, off, buf, 0, rem);
-            xorArray(buf, enc);
-            System.arraycopy(buf, 0, out, off, rem);
-            System.arraycopy(buf, 0, prev, 0, bs);
+
+            for (int i = 0; i < rem; i++) {
+                out[off + i] = (byte) (data[off + i] ^ enc[i]);
+            }
+
+            System.arraycopy(out, off, prev, 0, rem);
         }
 
         return out;
@@ -34,26 +34,22 @@ public class CfbMode implements CipherMode {
 
     @Override
     public byte[] decrypt(byte[] data, byte[] iv) {
-
         int bs = cipher.getBlockSize();
 
         byte[] out  = new byte[data.length];
         byte[] prev = Arrays.copyOf(iv, bs);
-        byte[] buf  = new byte[bs];
 
         for (int off = 0; off < data.length; off += bs) {
             byte[] enc = cipher.encryptBlock(prev);
             int rem = Math.min(bs, data.length - off);
-            System.arraycopy(data, off, buf, 0, rem);
-            xorArray(buf, enc);
-            System.arraycopy(buf, 0, out, off, rem);
-            System.arraycopy(data, off, prev, 0, bs);
+
+            for (int i = 0; i < rem; i++) {
+                out[off + i] = (byte) (data[off + i] ^ enc[i]);
+            }
+
+            System.arraycopy(data, off, prev, 0, rem);
         }
 
         return out;
-    }
-
-    private static void xorArray(byte[] a, byte[] b) {
-        for (int i = 0; i < a.length; i++) a[i] ^= b[i];
     }
 }

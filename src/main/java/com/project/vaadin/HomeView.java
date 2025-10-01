@@ -80,12 +80,12 @@ public class HomeView extends VerticalLayout {
 
         Select<String> modeSelect = new Select<>();
         modeSelect.setLabel("Режим шифрования");
-        modeSelect.setItems("CBC", "PCBC", "ECB", "CTR", "OFB", "CFB", "Random Delta");
+        modeSelect.setItems("CBC", "PCBC", "ECB", "CTR", "OFB", "CFB", "Random_Delta");
         modeSelect.setPlaceholder("Выберите режим");
 
         Select<String> paddingSelect = new Select<>();
         paddingSelect.setLabel("Паддинг");
-        paddingSelect.setItems("PKCS7", "ZEROS", "ANSI_X923", "ISO 10126");
+        paddingSelect.setItems("PKCS7", "ZEROS", "ANSI_X923", "ISO_10126");
         paddingSelect.setPlaceholder("Выберите паддинг");
 
         Button confirm = new Button("Создать", ev -> {

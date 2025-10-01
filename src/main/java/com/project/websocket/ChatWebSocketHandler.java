@@ -20,33 +20,41 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 public class ChatWebSocketHandler extends TextWebSocketHandler {
 
-    private static final Set<WebSocketSession> sessions = Collections.synchronizedSet(new HashSet<>());
+    // активные комнаты: roomId → набор сессий
+    private static final Map<String, Set<WebSocketSession>> rooms = new ConcurrentHashMap<>();
 
+    // история сообщений по комнатам
     private static final Map<String, List<String>> messageHistory = new ConcurrentHashMap<>();
 
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
     private static final ZoneId MOSCOW_ZONE = ZoneId.of("Europe/Moscow");
 
     @Override
-    public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-        sessions.add(session);
-        log.info("Новое WebSocket-соединение: {}", session.getId());
-
+    public void afterConnectionEstablished(WebSocketSession session) {
         String path = session.getUri() != null ? session.getUri().getPath() : "";
         String roomId = extractRoomId(path);
+        if (roomId != null) {
+            rooms.computeIfAbsent(roomId, k -> ConcurrentHashMap.newKeySet()).add(session);
+            log.info("Новое подключение в комнату {} ({} активных)", roomId, rooms.get(roomId).size());
+        }
+    }
 
-        if (roomId != null && messageHistory.containsKey(roomId)) {
-            for (String msg : messageHistory.get(roomId)) {
-                session.sendMessage(new TextMessage(msg));
+    private void removeSession(String roomId, WebSocketSession session) {
+        Set<WebSocketSession> sessions = rooms.get(roomId);
+        if (sessions != null) {
+            sessions.remove(session);
+            if (sessions.isEmpty()) {
+                rooms.remove(roomId);
+                messageHistory.remove(roomId);
+                log.info("Комната {} опустела и была очищена", roomId);
             }
-            log.info("История ({} сообщений) отправлена в комнату {}", messageHistory.get(roomId).size(), roomId);
         }
     }
 
     @Override
-    public void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
+    public void handleTextMessage(WebSocketSession session, TextMessage message) {
         String payload = message.getPayload();
-        log.info("Получено сообщение: {}", payload);
+        log.info("Получено: {}", payload);
 
         try {
             JsonObject json = Json.parse(payload);
@@ -54,33 +62,65 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
             String path = session.getUri() != null ? session.getUri().getPath() : "";
             String roomId = extractRoomId(path);
+            if (roomId == null) return;
 
-            if (roomId != null) {
-                messageHistory
-                        .computeIfAbsent(roomId, id -> Collections.synchronizedList(new ArrayList<>()))
-                        .add(json.toJson());
-            }
+            String type = json.hasKey("type") ? json.getString("type") : "message";
+            String user = json.hasKey("user") ? json.getString("user") : "unknown";
+            String userId = json.hasKey("userId") ? json.getString("userId") : "";
 
-            synchronized (sessions) {
-                for (WebSocketSession ws : sessions) {
-                    if (!ws.isOpen()) continue;
-
-                    if (ws.getId().equals(session.getId())) continue;
-
-                    String otherPath = ws.getUri() != null ? ws.getUri().getPath() : "";
-                    String otherRoom = extractRoomId(otherPath);
-                    if (roomId != null && !roomId.equals(otherRoom)) continue;
-
-                    ws.sendMessage(new TextMessage(json.toJson()));
-                    log.info("Отправлено: {} -> {}", session.getId(), ws.getId());
+            switch (type) {
+                case "join" -> {
+                    rooms.computeIfAbsent(roomId, k -> ConcurrentHashMap.newKeySet()).add(session);
+                    broadcast(roomId, makeEvent("join", user));
+                    log.info("{} подключился к комнате {}", user, roomId);
                 }
-            }
+                case "leave" -> {
+                    broadcast(roomId, makeEvent("leave", user));
+                    removeSession(roomId, session);
+                    messageHistory.remove(roomId); // очистить историю, если пользователь вышел
+                    log.info("{} покинул комнату {}", user, roomId);
+                }
+                case "closed" -> {
+                    broadcast(roomId, makeEvent("closed", user));
+                    closeRoom(roomId);
+                    log.info("Комната {} закрыта пользователем {}", roomId, user);
+                }
+                case "message" -> {
+                    Set<WebSocketSession> roomSessions = rooms.get(roomId);
+                    if (roomSessions == null || roomSessions.size() < 2) {
+                        log.warn("Комната {}: недостаточно клиентов для рассылки", roomId);
+                        return;
+                    }
 
+                    messageHistory.computeIfAbsent(roomId,
+                            id -> Collections.synchronizedList(new ArrayList<>())
+                    ).add(json.toJson());
+                    broadcast(roomId, json.toJson());
+                }
+                default -> log.warn("Неизвестный тип: {}", type);
+            }
         } catch (Exception e) {
-            log.error("Ошибка при обработке сообщения: {}", e.getMessage(), e);
+            log.error("Ошибка обработки сообщения: {}", e.getMessage(), e);
         }
     }
 
+
+    @Override
+    public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
+        String path = session.getUri() != null ? session.getUri().getPath() : "";
+        String roomId = extractRoomId(path);
+        if (roomId != null) {
+            Set<WebSocketSession> sessions = rooms.get(roomId);
+            if (sessions != null) {
+                sessions.remove(session);
+                if (sessions.isEmpty()) {
+                    rooms.remove(roomId);
+                    log.info("Комната {} опустела и удалена", roomId);
+                }
+            }
+        }
+        log.info("WebSocket закрыт: {}", session.getId());
+    }
 
     private String extractRoomId(String path) {
         if (path != null && path.startsWith("/chat/")) {
@@ -89,34 +129,45 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         return null;
     }
 
-    @Override
-    public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
-        sessions.remove(session);
-        log.info("Соединение закрыто: {}", session.getId());
-    }
+    private void broadcast(String roomId, String json) {
+        Set<WebSocketSession> sessions = rooms.get(roomId);
+        if (sessions == null) return;
 
-    public static void sendToSession(String sessionId, String jsonMessage) {
-        VaadinSession session = SessionRegistry.get(sessionId);
-        if (session != null) {
-            session.access(() -> {
+        synchronized (sessions) {
+            for (WebSocketSession s : sessions) {
+                if (!s.isOpen()) continue;
                 try {
-                    UI ui = session.getUIs().stream().findFirst().orElse(null);
-                    if (ui != null) {
-                        // вызов серверного метода receiveMessage прямо в UI
-                        ui.getPage().executeJs(
-                                "if ($0 && $0.$server && $0.$server.receiveMessage) " +
-                                        "$0.$server.receiveMessage('system', $1, new Date().toISOString());",
-                                ui.getElement(), jsonMessage
-                        );
-                    }
+                    s.sendMessage(new TextMessage(json));
                 } catch (Exception e) {
-                    log.error("Ошибка отправки в сессию {}: {}", sessionId, e.getMessage(), e);
+                    log.error("Ошибка отправки WS: {}", e.getMessage());
                 }
-            });
-        } else {
-            log.warn("Сессия {} не найдена (возможно, закрыта)", sessionId);
+            }
         }
     }
+
+    private String makeEvent(String type, String user) {
+        JsonObject event = Json.createObject();
+        event.put("type", type);
+        event.put("user", user);
+        event.put("timestamp", LocalDateTime.now(MOSCOW_ZONE).format(FORMATTER));
+        return event.toJson();
+    }
+
+    private void closeRoom(String roomId) {
+        Set<WebSocketSession> sessions = rooms.remove(roomId);
+        if (sessions != null) {
+            for (WebSocketSession s : sessions) {
+                try {
+                    if (s.isOpen()) s.close();
+                } catch (Exception e) {
+                    log.error("Ошибка при закрытии сессии: {}", e.getMessage());
+                }
+            }
+        }
+        messageHistory.remove(roomId);
+        log.info("Комната {} полностью очищена", roomId);
+    }
+
 
     public static List<String> getHistory(String roomId) {
         return messageHistory.getOrDefault(roomId, List.of());
@@ -126,4 +177,26 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         messageHistory.remove(roomId);
     }
 
+    // вспомогательная отправка Vaadin-сессии, если нужно вызвать UI
+    public static void sendToSession(String sessionId, String jsonMessage) {
+        VaadinSession session = SessionRegistry.get(sessionId);
+        if (session != null) {
+            session.access(() -> {
+                try {
+                    UI ui = session.getUIs().stream().findFirst().orElse(null);
+                    if (ui != null) {
+                        ui.getPage().executeJs(
+                                "if ($0 && $0.$server && $0.$server.receiveMessage) " +
+                                        "$0.$server.receiveMessage('system', $1, new Date().toISOString());",
+                                ui.getElement(), jsonMessage
+                        );
+                    }
+                } catch (Exception e) {
+                    log.error("Ошибка отправки в Vaadin UI {}: {}", sessionId, e.getMessage());
+                }
+            });
+        } else {
+            log.warn("Vaadin-сессия {} не найдена", sessionId);
+        }
+    }
 }

@@ -5,7 +5,7 @@ import com.project.crypto.util.Bytes;
 
 import java.util.Arrays;
 
-public final class OfbMode implements CipherMode {
+public class OfbMode implements CipherMode {
 
     private final Algorithm cipher;
 

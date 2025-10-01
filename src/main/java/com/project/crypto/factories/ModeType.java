@@ -4,5 +4,8 @@ public enum ModeType {
     CBC,
     CFB,
     ECB,
-    OFB
+    OFB,
+    PCBC,
+    CTR,
+    Random_Delta
 }

@@ -4,8 +4,7 @@ import com.project.crypto.ciphers.Algorithm;
 import com.project.crypto.ciphers.MARS;
 import com.project.crypto.ciphers.Magenta;
 import com.project.crypto.modes.*;
-import com.project.crypto.padding.Padding;
-import com.project.crypto.padding.Pkcs7Padding;
+import com.project.crypto.padding.*;
 
 public class CryptoFactory {
     public final AlgorithmType algorithm;
@@ -59,10 +58,16 @@ public class CryptoFactory {
                 case CFB -> new CfbMode(alg);
                 case ECB -> new EcbMode(alg);
                 case OFB -> new OfbMode(alg);
+                case PCBC -> new PcbcMode(alg);
+                case CTR -> new CtrMode(alg);
+                case Random_Delta -> new RandomDeltaMode(alg);
             };
 
             Padding pad = switch (padding) {
                 case PKCS7 -> new Pkcs7Padding();
+                case ISO_10126 -> new ISO_10126Padding();
+                case ANSI_X923 -> new ANSI_X923Padding();
+                case Zeros -> new ZerosPadding();
             };
 
             return new CryptoSuite(alg, cmode, pad);
