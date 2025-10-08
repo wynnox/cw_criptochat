@@ -1,6 +1,10 @@
 vaadin:
   launch-browser: true
   whitelisted-packages: com.project.vaadin
+server:
+  tomcat:
+    websocket:
+      max-frame-size: 10485760 #10mb
 spring:
   main:
     allow-bean-definition-overriding: true

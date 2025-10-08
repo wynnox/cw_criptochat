@@ -5,10 +5,8 @@ import com.project.crypto.keyx.DhParams;
 import com.project.crypto.keyx.DiffieHellman;
 import com.project.crypto.util.Bytes;
 import com.project.model.ChatFileMessage;
-import com.vaadin.flow.component.ClientCallable;
-import com.vaadin.flow.component.Composite;
-import com.vaadin.flow.component.DetachEvent;
-import com.vaadin.flow.component.UI;
+import com.project.model.Room;
+import com.vaadin.flow.component.*;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dialog.Dialog;
@@ -23,6 +21,7 @@ import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.page.Push;
 import com.vaadin.flow.component.progressbar.ProgressBar;
 import com.vaadin.flow.component.upload.ProgressUpdateEvent;
 import com.vaadin.flow.component.upload.Upload;
@@ -32,6 +31,7 @@ import com.vaadin.flow.server.StreamResource;
 import com.vaadin.flow.server.VaadinSession;
 import elemental.json.Json;
 import elemental.json.JsonObject;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.ByteArrayInputStream;
@@ -48,9 +48,11 @@ import java.util.*;
 import java.util.Base64;
 
 @PageTitle("Chat")
-@PreserveOnRefresh
+//@PreserveOnRefresh
+//@Push
 @Route(value = "chat-view/:dialogId", layout = MainLayout.class)
-public class ChatView extends Composite<VerticalLayout> implements BeforeEnterObserver {
+@Slf4j
+public class ChatView extends Composite<VerticalLayout> /*implements BeforeEnterObserver*/ {
 
     private static final ZoneId MOSCOW_ZONE = ZoneId.of("Europe/Moscow");
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
@@ -102,8 +104,10 @@ public class ChatView extends Composite<VerticalLayout> implements BeforeEnterOb
         this.uploadRef = upload;
 
         // без блокировки — всё активно сразу
-        messageInput.setEnabled(true);
-        uploadBtn.setEnabled(true);
+//        messageInput.setEnabled(true);
+//        uploadBtn.setEnabled(true);
+        messageInput.setEnabled(false);
+        uploadBtn.setEnabled(false);
 
         upload.setMaxFileSize(50 * 1024 * 1024);
         upload.setAcceptedFileTypes("image/*", "application/pdf", "text/plain");
@@ -122,7 +126,7 @@ public class ChatView extends Composite<VerticalLayout> implements BeforeEnterOb
         upload.addStartedListener(e -> {
             uploadProgress.setValue(0);
             uploadProgress.setVisible(true);
-            uploadStatus.setText("Загрузка: " + buffer.getFileData().getFileName());
+            uploadStatus.setText("Загрузка: " + e.getFileName());
         });
 
         upload.addProgressListener((ProgressUpdateEvent e) -> {
@@ -138,12 +142,12 @@ public class ChatView extends Composite<VerticalLayout> implements BeforeEnterOb
         upload.addSucceededListener(e -> {
             onFileUpload(buffer);
             uploadProgress.setVisible(false);
-            uploadStatus.setText("Файл загружен: " + buffer.getFileData().getFileName());
+            uploadStatus.setText("Файл загружен: " + e.getFileName());
         });
 
         upload.addFailedListener(e -> {
             uploadProgress.setVisible(false);
-            uploadStatus.setText("Ошибка загрузки: " + buffer.getFileData().getFileName());
+            uploadStatus.setText("Ошибка загрузки: " + e.getFileName());
             Notification.show("Не удалось загрузить файл", 3000, Notification.Position.MIDDLE);
         });
 
@@ -216,14 +220,36 @@ public class ChatView extends Composite<VerticalLayout> implements BeforeEnterOb
     }
 
     // ---------- Ключи и подключение ----------
+//    @Override
+//    public void beforeEnter(BeforeEnterEvent event) {
+//        dialogId = event.getRouteParameters().get("dialogId").orElse("default");
+//        VaadinSession sess = VaadinSession.getCurrent();
+//        algorithm = (String) sess.getAttribute("algorithm");
+//        mode = (String) sess.getAttribute("mode");
+//        padding = (String) sess.getAttribute("padding");
+//
+//        userId = username + "-" + UUID.randomUUID();
+//        performKeyExchange();
+//    }
     @Override
-    public void beforeEnter(BeforeEnterEvent event) {
-        dialogId = event.getRouteParameters().get("dialogId").orElse("default");
+    protected void onAttach(AttachEvent event) {
+        log.info("onAttach for user {}", username);
+
+        super.onAttach(event);
+
+        // Получаем текущую локацию (включая параметры маршрута)
+        Location location = UI.getCurrent().getInternals().getActiveViewLocation();
+
+        // Извлекаем сегменты пути
+        List<String> segments = location.getSegments();
+        // Например, при URL: /chat-view/123 → segments = ["chat-view", "123"]
+
+        dialogId = segments.size() > 1 ? segments.get(1) : "default";
+
         VaadinSession sess = VaadinSession.getCurrent();
         algorithm = (String) sess.getAttribute("algorithm");
         mode = (String) sess.getAttribute("mode");
         padding = (String) sess.getAttribute("padding");
-
         userId = username + "-" + UUID.randomUUID();
         performKeyExchange();
     }
@@ -231,6 +257,7 @@ public class ChatView extends Composite<VerticalLayout> implements BeforeEnterOb
     @SuppressWarnings("unchecked")
     private void performKeyExchange() {
         try {
+            log.info("performing key exchange for user {}", username);
             String url = "http://localhost:8080/room/list";
             List<Map<String, Object>> rooms =
                     Arrays.asList(Objects.requireNonNull(rest.getForObject(url, Map[].class)));
@@ -260,10 +287,12 @@ public class ChatView extends Composite<VerticalLayout> implements BeforeEnterOb
                 @Override
                 public void run() {
                     try {
+                        log.info("polling keys for user {}", username);
                         Map<String, Object> keyMap = rest.getForObject(
                                 "http://localhost:8080/room/" + dialogId + "/keys",
                                 Map.class);
                         if (keyMap != null && keyMap.size() >= 2) {
+                            log.info("keys polled for user {}", username);
                             for (Map.Entry<String, Object> e : keyMap.entrySet()) {
                                 if (!e.getKey().equals(userId)) {
                                     BigInteger peerY = new BigInteger(e.getValue().toString());
@@ -283,6 +312,7 @@ public class ChatView extends Composite<VerticalLayout> implements BeforeEnterOb
 
     private void setupCryptoSuite() {
         try {
+            log.info("setting up suite for user {}", username);
             if (keyPoller != null) keyPoller.cancel();
 
             suite = new CryptoFactory.Builder()
@@ -293,6 +323,11 @@ public class ChatView extends Composite<VerticalLayout> implements BeforeEnterOb
                     .buildSuite();
 
             cryptoReady = true;
+            UI.getCurrent().access(() -> {
+                messageInputRef.getElement().setEnabled(true);
+                uploadRef.getUploadButton().getElement().setEnabled(true);
+            });
+            log.info("everything should be unlocked now for user {} session {}", username, UI.getCurrent().getSession().getSession().getId());
             connectToWebSocket();
             Notification.show("Ключи обменяны. Соединение защищено.");
         } catch (Exception e) {
@@ -302,6 +337,7 @@ public class ChatView extends Composite<VerticalLayout> implements BeforeEnterOb
 
     // ---------- WebSocket ----------
     private void connectToWebSocket() {
+        log.info("connecting to websocket for user {}, session {}", username, UI.getCurrent().getSession().getSession().getId());
         UI.getCurrent().getPage().executeJs("""
             if (window.chatSocket &&
                 window.chatSocket.readyState !== WebSocket.CLOSED &&
@@ -333,6 +369,22 @@ public class ChatView extends Composite<VerticalLayout> implements BeforeEnterOb
             connectChatSocket($0, $1, $2, $3);
         """, dialogId, getElement(), userId, username);
     }
+
+    @ClientCallable
+    public void handleUserEvent(String type, String user) {
+        if ("closed".equals(type)) {
+            log.info("Комната {} закрыта по инициативе {}", dialogId, user);
+            Notification.show("Комната закрыта");
+            getUI().ifPresent(ui -> ui.navigate("")); // Возврат на главную
+        }
+        else if ("join".equals(type)) {
+            Notification.show(user + " подключился к чату");
+        }
+        else if ("leave".equals(type)) {
+            Notification.show(user + " покинул чат");
+        }
+    }
+
 
     // ---------- Отправка / получение сообщений ----------
     private void sendTextMessage(String user, String text) {
@@ -384,12 +436,21 @@ public class ChatView extends Composite<VerticalLayout> implements BeforeEnterOb
                 messages.add(item);
                 messageList.setItems(messages);
 
+                StreamResource res = new StreamResource(fileName, () -> new ByteArrayInputStream(plaintext));
+
                 if (mimeType.startsWith("image")) {
-                    StreamResource res = new StreamResource(fileName, () -> new ByteArrayInputStream(plaintext));
                     Image img = new Image(res, fileName);
                     img.setMaxWidth("200px");
                     img.getStyle().set("border-radius", "8px").set("margin", "6px 0 12px 48px");
                     getContent().add(img);
+                } else {
+                    Anchor downloadLink = new Anchor(res, "⬇ Скачать " + fileName);
+                    downloadLink.getElement().setAttribute("download", true); // важно!
+                    downloadLink.getStyle()
+                            .set("margin-left", "48px")
+                            .set("margin-bottom", "12px")
+                            .set("display", "block");
+                    getContent().add(downloadLink);
                 }
 
                 messageList.getElement().executeJs("this.scrollToIndex($0)", messages.size() - 1);

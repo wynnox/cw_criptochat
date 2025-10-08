@@ -81,9 +81,22 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                     log.info("{} покинул комнату {}", user, roomId);
                 }
                 case "closed" -> {
-                    broadcast(roomId, makeEvent("closed", user));
-                    closeRoom(roomId);
-                    log.info("Комната {} закрыта пользователем {}", roomId, user);
+                    //broadcast(roomId, makeEvent("closed", user));
+                    //closeRoom(roomId);
+                    //log.info("Комната {} закрыта пользователем {}", roomId, user);
+                    // Сначала уведомляем всех участников
+                    String msg = makeEvent("closed", user);
+                    broadcast(roomId, msg);
+                    log.info("Комната {} закрывается пользователем {}", roomId, user);
+
+                    // Даём клиентам секунду на обработку события
+                    new Timer(true).schedule(new TimerTask() {
+                        @Override
+                        public void run() {
+                            closeRoom(roomId);
+                            log.info("Комната {} полностью закрыта", roomId);
+                        }
+                    }, 1000);
                 }
                 case "message" -> {
                     Set<WebSocketSession> roomSessions = rooms.get(roomId);
